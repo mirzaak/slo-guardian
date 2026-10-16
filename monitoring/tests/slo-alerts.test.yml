@@ -1,0 +1,63 @@
+# promtool unit tests: prove the burn-rate alerts fire on a real outage
+# and stay quiet on normal background errors.
+#   promtool test rules monitoring/tests/slo-alerts.test.yml
+rule_files:
+  - ../rules/slo-rules.yml
+  - ../rules/service-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: 10% errors for an hour pages on-call
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",method="GET",status="200"}'
+        values: '0+90x120'
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",method="GET",status="503"}'
+        values: '0+10x120'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: MemberEligibilityAvailabilityFastBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              service: member-eligibility
+              slo: availability
+            exp_annotations:
+              summary: 'member-eligibility: availability error budget burning too fast (page)'
+              description: 'SLO availability (99.50%) is consuming error budget faster than the page policy allows. Long-window error ratio: 10%.'
+              runbook_url: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbooks/slo-burn-rate.md#availability
+
+  - name: 0.1% background errors do not page
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",method="GET",status="200"}'
+        values: '0+999x120'
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",method="GET",status="500"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: MemberEligibilityAvailabilityFastBurn
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: MemberEligibilityAvailabilitySlowBurn
+        exp_alerts: []
+
+  - name: scrape target down pages after 2m
+    interval: 1m
+    input_series:
+      - series: 'up{job="member-eligibility",instance="app:8000"}'
+        values: '1 1 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: MemberEligibilityTargetDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              service: member-eligibility
+              job: member-eligibility
+              instance: app:8000
+            exp_annotations:
+              summary: 'member-eligibility: Prometheus cannot scrape app:8000'
+              description: 'No metrics for 2m. Either the service is down or the scrape path is broken - both blind the SLOs.'
+              runbook_url: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbooks/target-down.md

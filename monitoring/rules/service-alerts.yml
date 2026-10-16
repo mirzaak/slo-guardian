@@ -1,0 +1,24 @@
+# Hand-written symptom alerts that complement the generated SLO burn-rate alerts.
+groups:
+  - name: member-eligibility-service
+    rules:
+      - alert: MemberEligibilityTargetDown
+        expr: up{job="member-eligibility"} == 0
+        for: 2m
+        labels:
+          severity: page
+          service: member-eligibility
+        annotations:
+          summary: "member-eligibility: Prometheus cannot scrape {{ $labels.instance }}"
+          description: "No metrics for 2m. Either the service is down or the scrape path is broken - both blind the SLOs."
+          runbook_url: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbooks/target-down.md
+
+      - alert: MemberEligibilityChaosActive
+        expr: max(chaos_error_rate{service="member-eligibility"}) > 0 or max(chaos_latency_seconds{service="member-eligibility"}) > 0
+        for: 30m
+        labels:
+          severity: ticket
+          service: member-eligibility
+        annotations:
+          summary: "member-eligibility: fault injection left enabled for 30m+"
+          description: "A game-day experiment is still active. Reset with DELETE /admin/chaos if the exercise is over."

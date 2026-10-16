@@ -1,0 +1,24 @@
+# Local demo routing. In production, `page` routes to the on-call pager
+# (PagerDuty/Opsgenie) and `ticket` to the team's queue.
+route:
+  receiver: ticket-queue
+  group_by: [alertname, service, slo]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="page"]
+      receiver: on-call-pager
+      repeat_interval: 1h
+
+inhibit_rules:
+  # If we're already paging for a fast burn, don't also raise the slow-burn ticket.
+  - source_matchers: [severity="page"]
+    target_matchers: [severity="ticket"]
+    equal: [service, slo]
+
+receivers:
+  # Receivers are intentionally empty locally - alerts are visible in the
+  # Alertmanager UI (http://localhost:9093) without notifying anyone.
+  - name: on-call-pager
+  - name: ticket-queue

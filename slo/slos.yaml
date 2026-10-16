@@ -1,0 +1,28 @@
+# SLOs as code. This file is the single source of truth for:
+#   - Prometheus recording + burn-rate alert rules  (python -m slo.generate_rules)
+#   - the error-budget report / deploy gate         (python -m slo.report)
+#
+# Each SLO defines total_query plus either good_query or bad_query.
+# Prefer bad_query when errors are a distinct series (e.g. 5xx): zero errors
+# then reads as exactly 100% instead of picking up extrapolation noise.
+# `{window}` is substituted with a PromQL range (5m, 1h, 30d, ...).
+service: member-eligibility
+period: 30d
+runbook_base: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbooks/slo-burn-rate.md
+
+slos:
+  - name: availability
+    description: Eligibility API requests that do not fail with a 5xx.
+    objective: 0.995
+    bad_query: >-
+      sum(increase(http_requests_total{service="member-eligibility",route=~"/api/.*",status=~"5.."}[{window}])) or vector(0)
+    total_query: >-
+      sum(increase(http_requests_total{service="member-eligibility",route=~"/api/.*"}[{window}]))
+
+  - name: latency
+    description: Eligibility API requests served in under 300ms.
+    objective: 0.95
+    good_query: >-
+      sum(increase(http_request_duration_seconds_bucket{service="member-eligibility",route=~"/api/.*",le="0.3"}[{window}]))
+    total_query: >-
+      sum(increase(http_request_duration_seconds_count{service="member-eligibility",route=~"/api/.*"}[{window}]))

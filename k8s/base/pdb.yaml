@@ -1,0 +1,9 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: member-eligibility
+spec:
+  minAvailable: 2   # node drains / EKS upgrades can't take more than one pod at a time
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: member-eligibility

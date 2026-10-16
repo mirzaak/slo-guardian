@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: slo-guardian
+    folder: SRE
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
