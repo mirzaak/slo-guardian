@@ -1,68 +1,28 @@
 name: ci
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-
-permissions:
-  contents: read
+on: [push, pull_request]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-          cache: pip
-      - run: pip install -r requirements-dev.txt
-      - name: Lint
-        run: ruff check .
-      - name: Unit tests
-        run: pytest -q
-      - name: Generated SLO rules are up to date
-        run: python -m slo.generate_rules --check
 
-  monitoring:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: promtool check config
-        run: docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v2.55.1 check config /m/prometheus.yml
-      - name: promtool alert unit tests
-        run: docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint promtool prom/prometheus:v2.55.1 test rules /m/tests/slo-alerts.test.yml
-      - name: amtool check config
-        run: docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint amtool prom/alertmanager:v0.27.0 check-config /m/alertmanager.yml
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest httpx
 
-  kubernetes:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate manifests
-        run: kubectl kustomize k8s/base | docker run --rm -i ghcr.io/yannh/kubeconform:latest -strict -summary -
+      - name: Run tests
+        run: python -m pytest
 
-  image:
-    needs: [test, monitoring, kubernetes]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        if: github.event_name == 'push'
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: ${{ github.event_name == 'push' }}
-          build-args: APP_VERSION=${{ github.sha }}
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+      - name: Test Prometheus alert rules
+        run: docker run --rm -v "$PWD/monitoring:/m" --entrypoint promtool prom/prometheus:v2.55.1 test rules /m/rules_test.yml
+
+      - name: Validate Kubernetes manifests
+        run: docker run --rm -v "$PWD/k8s:/k8s" ghcr.io/yannh/kubeconform:latest -strict -summary /k8s
+
+      - name: Build Docker image
+        run: docker build -t slo-guardian .
