@@ -1,170 +1,95 @@
 # slo-guardian
 
-[![ci](https://github.com/mirzaak/slo-guardian/actions/workflows/ci.yml/badge.svg)](https://github.com/mirzaak/slo-guardian/actions/workflows/ci.yml)
+![ci](https://github.com/mirzaak/slo-guardian/actions/workflows/ci.yml/badge.svg)
 
-**SLO-driven reliability for a healthcare-style microservice** - SLIs, SLOs and error budgets defined as code,
-multi-window burn-rate alerting, a release gate, game-day fault injection, Kubernetes manifests hardened for EKS,
-and the runbooks + incident process that make alerts actionable.
+A small project I built to practice SRE basics: monitoring a service with SLOs and error budgets,
+alerting on burn rate, and testing what happens when things break.
 
-The service is a synthetic *Member Eligibility API* (no real data, no PHI). The point isn't the API - it's
-everything around it that keeps it reliable.
+The service is a fake "member eligibility" API (like something a health insurance platform would have).
+All data is made up.
 
-![SLO dashboard during a game day](docs/img/dashboard.png)
-*Game day: 20% injected errors. Availability burns at ~22x and pages on-call; latency stays within budget.*
+![dashboard](docs/img/dashboard.png)
 
-## What's inside
+*Dashboard during a chaos test with 20% of requests failing. The availability SLO is burning budget
+~14x too fast, which triggers a page. Latency stays fine.*
 
-| Area | What it shows | Where |
-|---|---|---|
-| **Instrumentation** | RED metrics (rate, errors, duration) labelled by route *template* to bound cardinality; probe traffic excluded from SLIs; JSON logs with pseudonymised member refs (no identifiers in logs or metrics) | [`app/main.py`](app/main.py) |
-| **SLOs as code** | One YAML file defines availability (99.5%) and latency (95% < 300ms) SLOs over 30 days | [`slo/slos.yaml`](slo/slos.yaml) |
-| **Burn-rate alerting** | Recording rules + multi-window, multi-burn-rate alerts generated from the YAML (Google SRE Workbook method) - page on fast burn, ticket on slow burn | [`slo/generate_rules.py`](slo/generate_rules.py), [`monitoring/rules/`](monitoring/rules) |
-| **Alert tests** | `promtool` unit tests prove alerts fire on an outage and stay quiet on background noise | [`monitoring/tests/`](monitoring/tests) |
-| **Error budget gate** | CLI reports SLI / budget remaining / burn rate; `--fail-on-exhausted` blocks a release when the budget is spent | [`slo/report.py`](slo/report.py) |
-| **Observability stack** | Prometheus, Alertmanager (severity routing + inhibition), provisioned Grafana dashboard | [`docker-compose.yml`](docker-compose.yml), [`monitoring/`](monitoring) |
-| **Chaos / game days** | Runtime fault injection (error rate, latency) behind a feature flag, plus an alert if it's left on | `/admin/chaos` |
-| **Kubernetes (EKS-ready)** | Zero-downtime rolling updates, startup/liveness/readiness probes, graceful shutdown, PDB, HPA, AZ topology spread, restricted Pod Security, read-only root FS | [`k8s/base/`](k8s/base) |
-| **CI/CD** | Lint, tests, generated-rules drift check, promtool/amtool validation, kubeconform schema checks, image build + push to GHCR | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
-| **Operations** | Runbooks linked from every alert, ITIL-aligned incident process with severity matrix, postmortem template, and a real game-day postmortem | [`docs/`](docs) |
+## What it does
 
-## Architecture
+- **API** (`app/main.py`) - FastAPI app that exposes Prometheus metrics: request count by status and a
+  latency histogram. Metrics use the route template instead of the real URL so member IDs never
+  end up in metrics.
+- **SLOs**
+  - Availability: 99.5% of requests don't return 5xx
+  - Latency: 95% of requests are faster than 300ms
+- **Alerts** (`monitoring/rules.yml`) - multi-window burn rate alerts from the Google SRE Workbook.
+  It pages if the budget burns 14.4x too fast over 1 hour (and is still happening in the last 5 minutes).
+  The alerts have unit tests in `monitoring/rules_test.yml`.
+- **Error budget report** (`slo_report.py`) - shows how much budget is left. Exits with code 1 when the
+  budget is used up, so it can block a deploy in a pipeline.
+- **Chaos testing** - `PUT /chaos` makes the API fail or slow down on purpose (only when `CHAOS_ENABLED=true`).
+- **Kubernetes** (`k8s/`) - deployment with probes, resource limits and zero-downtime rolling updates.
+- **CI** - GitHub Actions runs the tests, the alert rule tests, validates the k8s manifests and builds the image.
+- **Runbook** (`docs/runbook.md`) - what to do when each alert fires.
 
-```mermaid
-flowchart LR
-    LG[loadgen] -->|HTTP| APP[member-eligibility API<br/>/metrics]
-    APP -->|scrape 15s| PROM[Prometheus<br/>recording + alert rules]
-    YAML[slo/slos.yaml] -->|generate_rules| PROM
-    PROM -->|alerts| AM[Alertmanager<br/>page / ticket routing]
-    PROM --> GRAF[Grafana<br/>SLO dashboard]
-    PROM -->|PromQL| GATE[slo.report<br/>release gate]
-    PROM -.->|remote_write optional| NR[New Relic]
-```
+## Run it
 
-## Quick start
-
-Requires Docker and Python 3.11+.
+You need Docker.
 
 ```bash
-make install    # venv + dev dependencies
-make up         # app, loadgen, Prometheus, Alertmanager, Grafana
+make up
 ```
 
-| | URL |
-|---|---|
-| API docs | http://localhost:8000/docs |
-| Grafana dashboard | http://localhost:3000 |
-| Prometheus alerts | http://localhost:9090/alerts |
-| Alertmanager | http://localhost:9093 |
+- API: http://localhost:8000/docs
+- Grafana: http://localhost:3000
+- Prometheus alerts: http://localhost:9090/alerts
+
+A load generator starts with it, so the dashboard fills up after a minute or two.
+
+## Break it
 
 ```bash
-make report     # error budget report for the last hour
+make chaos-on     # 20% errors + 250ms extra latency
 ```
 
-```
-SLO report - member-eligibility (window 1h)
+After about 4 minutes the `AvailabilityBudgetBurn` alert fires and the report shows the budget is gone:
 
-SLO            OBJECTIVE       SLI  BUDGET LEFT    BURN    EVENTS  STATE
-------------------------------------------------------------------------
-availability      99.50%  100.000%       100.0%   0.00x     1,250  OK
-latency           95.00%   99.999%       100.0%   0.00x     1,250  OK
 ```
+$ python slo_report.py --window 5m
+SLO             TARGET       SLI    BURN  BUDGET LEFT
+availability     99.5%   92.586%   14.8x       -1383%
+latency          95.0%   98.687%    0.3x          74%
 
-## Run a game day
+Error budget used up - don't deploy new features, fix reliability first.
+```
 
 ```bash
-make chaos-on   # 20% of requests -> 503, +250ms latency
+make chaos-off
 ```
 
-Within ~4 minutes:
-
-1. The dashboard's availability burn rate climbs past the 14.4x line.
-2. `MemberEligibilityAvailabilityFastBurn` fires and routes to the `page` receiver in Alertmanager;
-   the slow-burn ticket is inhibited so on-call gets one notification, not two.
-3. The release gate closes:
-   ```bash
-   $ python -m slo.report --window 5m --fail-on-exhausted
-   availability      99.50%   90.607%     -1778.7%  18.79x     3,319  EXHAUSTED
-   Error budget exhausted - blocking release.      # exit code 2
-   ```
+## Run on Kubernetes
 
 ```bash
-make chaos-off  # alert resolves once the 5m window recovers
+docker build -t slo-guardian .
+kubectl apply -f k8s/
 ```
 
-The write-up of this exercise is in [`docs/postmortems/`](docs/postmortems/2026-10-16-game-day-availability.md).
+On EKS you would push the image to ECR and change the image name in `k8s/deployment.yaml`.
 
-## SLOs and alerting policy
-
-| SLO | SLI | Objective | 30-day budget |
-|---|---|---|---|
-| availability | non-5xx `/api/*` responses ÷ all `/api/*` responses | 99.5% | ~3.6 h of total outage |
-| latency | `/api/*` responses < 300ms ÷ all `/api/*` responses | 95% | 5% of requests may be slow |
-
-Alerts require **both** a long and a short window to exceed the threshold - the long window proves it's
-significant, the short window proves it's still happening (so alerts reset quickly after recovery).
-
-| Severity | Long window | Short window | Burn rate | Budget consumed | Route |
-|---|---|---|---|---|---|
-| page | 1h | 5m | 14.4x | 2% in 1h | on-call |
-| page | 6h | 30m | 6x | 5% in 6h | on-call |
-| ticket | 1d | 2h | 3x | 10% in 1d | team queue |
-| ticket | 3d | 6h | 1x | 10% in 3d | team queue |
-
-To change an objective or add an SLO, edit `slo/slos.yaml` and run `make rules`. CI fails if the
-committed rules drift from the YAML.
-
-## Deploying to Kubernetes / EKS
+## Tests
 
 ```bash
-make validate-k8s                     # kustomize build + kubeconform
-kubectl apply -k k8s/base             # namespace, deployment, service, PDB, HPA
+pip install -r requirements.txt pytest httpx
+python -m pytest
 ```
 
-Reliability decisions baked into the manifests:
+## New Relic
 
-- `maxUnavailable: 0` + readiness probe -> capacity never drops during a rollout.
-- `preStop` sleep + readiness failing on SIGTERM + `--timeout-graceful-shutdown` -> in-flight requests drain before the pod exits.
-- `PodDisruptionBudget minAvailable: 2` -> node drains and EKS upgrades take one pod at a time.
-- `topologySpreadConstraints` on `topology.kubernetes.io/zone` -> survives a single-AZ failure.
-- HPA on CPU with a 5-minute scale-down stabilisation window to avoid flapping.
-- Non-root, read-only root filesystem, all capabilities dropped, `restricted` Pod Security.
+Everything is plain Prometheus. To send the metrics to New Relic, uncomment the `remote_write`
+section in `monitoring/prometheus.yml` and add a license key.
 
-For production I'd add an overlay per environment, deliver it with ArgoCD (GitOps), and scrape via the
-Prometheus Operator / Amazon Managed Prometheus. The pod annotations work with either.
+## What I'd add next
 
-## Shipping to New Relic
-
-Everything here is plain Prometheus, so it ports to New Relic without re-instrumenting: uncomment the
-`remote_write` block in [`monitoring/prometheus.yml`](monitoring/prometheus.yml) and the same series arrive
-in New Relic, where the SLIs can be defined as New Relic Service Levels, e.g.:
-
-```sql
--- availability SLI (NRQL)
-SELECT filter(sum(http_requests_total), WHERE status NOT LIKE '5%') / sum(http_requests_total) * 100
-FROM Metric WHERE service = 'member-eligibility' AND route LIKE '/api/%' SINCE 1 hour ago
-```
-
-## Repo layout
-
-```
-app/                 FastAPI service: metrics, probes, JSON logs, fault injection
-slo/                 slos.yaml, rule generator, error-budget report / release gate
-loadgen/             stdlib-only traffic generator
-monitoring/          Prometheus config, generated + hand-written rules, promtool tests,
-                     Alertmanager routing, Grafana provisioning + dashboard
-k8s/base/            Kustomize manifests (Deployment, Service, PDB, HPA, Namespace)
-docs/                runbooks, incident process, postmortem template + game-day postmortem
-tests/               pytest: API behaviour, metric hygiene, error budget math, rule drift
-```
-
-## Development
-
-```bash
-make test           # pytest
-make lint           # ruff
-make check-rules    # promtool config check + alert unit tests (Docker)
-```
-
-## License
-
-MIT
+- Alertmanager to route alerts to Slack / PagerDuty
+- Slower "ticket" alerts for budget that burns slowly over days
+- Helm chart or ArgoCD for deployments
+- HPA and PodDisruptionBudget
