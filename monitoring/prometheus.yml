@@ -1,28 +1,17 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
-  external_labels:
-    env: local
 
 rule_files:
-  - rules/*.yml
-
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ["alertmanager:9093"]
+  - rules.yml
 
 scrape_configs:
   - job_name: member-eligibility
     static_configs:
       - targets: ["app:8000"]
 
-# Ship the same metrics to New Relic (or any remote-write backend) by
-# uncommenting this block and setting NEW_RELIC_LICENSE_KEY in the environment
-# of a config-templating step. New Relic's Prometheus remote-write endpoint
-# accepts these series unchanged, so the SLO queries port directly to NRQL.
-#
+# To send the same metrics to New Relic, uncomment and add your license key:
 # remote_write:
 #   - url: https://metric-api.newrelic.com/prometheus/v1/write?prometheus_server=slo-guardian
 #     authorization:
-#       credentials: <NEW_RELIC_LICENSE_KEY>
+#       credentials: YOUR_LICENSE_KEY

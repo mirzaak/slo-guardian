@@ -1,0 +1,53 @@
+# Run with: promtool test rules monitoring/rules_test.yml
+rule_files:
+  - rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: 10% errors for an hour should page
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",status="200"}'
+        values: '0+90x120'
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",status="503"}'
+        values: '0+10x120'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: AvailabilityBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              slo: availability
+            exp_annotations:
+              summary: availability error budget is burning too fast (99.5% SLO)
+              runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
+
+  - name: 0.1% errors should not page
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",status="200"}'
+        values: '0+999x120'
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",status="500"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: AvailabilityBudgetBurn
+        exp_alerts: []
+
+  - name: service down
+    interval: 1m
+    input_series:
+      - series: 'up{job="member-eligibility",instance="app:8000"}'
+        values: '1 1 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ServiceDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              job: member-eligibility
+              instance: app:8000
+            exp_annotations:
+              summary: Prometheus can't scrape the service
+              runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md

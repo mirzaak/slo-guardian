@@ -1,15 +1,10 @@
 {
   "uid": "slo-guardian",
-  "title": "Member Eligibility - SLOs",
-  "tags": [
-    "sre",
-    "slo"
-  ],
-  "timezone": "browser",
+  "title": "Member Eligibility SLOs",
   "schemaVersion": 39,
   "refresh": "15s",
   "time": {
-    "from": "now-1h",
+    "from": "now-30m",
     "to": "now"
   },
   "panels": [
@@ -24,7 +19,7 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "targets": [
@@ -33,17 +28,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "1 - slo:sli_error:ratio_rate1h{slo=\"availability\"}",
+          "expr": "1 - slo:error_ratio:rate1h{slo=\"availability\"}",
           "legendFormat": "",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
-          "decimals": 3,
-          "min": 0,
-          "max": 1,
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -56,7 +48,8 @@
                 "value": 0.995
               }
             ]
-          }
+          },
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -69,74 +62,11 @@
           "values": false
         },
         "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto"
+        "graphMode": "area"
       }
     },
     {
       "id": 2,
-      "title": "Availability budget left (3d)",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 4,
-        "y": 0,
-        "w": 4,
-        "h": 5
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "1 - (slo:sli_error:ratio_rate3d{slo=\"availability\"} / slo:error_budget:ratio{slo=\"availability\"})",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "decimals": 1,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0
-              },
-              {
-                "color": "green",
-                "value": 0.25
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 3,
       "title": "Availability burn rate (1h)",
       "type": "stat",
       "datasource": {
@@ -144,9 +74,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 8,
+        "x": 6,
         "y": 0,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "targets": [
@@ -155,15 +85,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "slo:sli_error:ratio_rate1h{slo=\"availability\"} / slo:error_budget:ratio{slo=\"availability\"}",
+          "expr": "slo:error_ratio:rate1h{slo=\"availability\"} / 0.005",
           "legendFormat": "",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "x",
-          "decimals": 2,
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -180,7 +109,8 @@
                 "value": 14.4
               }
             ]
-          }
+          },
+          "unit": "x"
         },
         "overrides": []
       },
@@ -193,12 +123,11 @@
           "values": false
         },
         "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto"
+        "graphMode": "area"
       }
     },
     {
-      "id": 4,
+      "id": 3,
       "title": "Latency SLI (1h)",
       "type": "stat",
       "datasource": {
@@ -208,7 +137,7 @@
       "gridPos": {
         "x": 12,
         "y": 0,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "targets": [
@@ -217,17 +146,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "1 - slo:sli_error:ratio_rate1h{slo=\"latency\"}",
+          "expr": "1 - slo:error_ratio:rate1h{slo=\"latency\"}",
           "legendFormat": "",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
-          "decimals": 3,
-          "min": 0,
-          "max": 1,
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -240,69 +166,8 @@
                 "value": 0.95
               }
             ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 5,
-      "title": "Latency budget left (3d)",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 0,
-        "w": 4,
-        "h": 5
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
           },
-          "expr": "1 - (slo:sli_error:ratio_rate3d{slo=\"latency\"} / slo:error_budget:ratio{slo=\"latency\"})",
-          "legendFormat": "",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "decimals": 1,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 0
-              },
-              {
-                "color": "green",
-                "value": 0.25
-              }
-            ]
-          }
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -315,12 +180,11 @@
           "values": false
         },
         "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto"
+        "graphMode": "area"
       }
     },
     {
-      "id": 6,
+      "id": 4,
       "title": "Latency burn rate (1h)",
       "type": "stat",
       "datasource": {
@@ -328,9 +192,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 20,
+        "x": 18,
         "y": 0,
-        "w": 4,
+        "w": 6,
         "h": 5
       },
       "targets": [
@@ -339,15 +203,14 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "slo:sli_error:ratio_rate1h{slo=\"latency\"} / slo:error_budget:ratio{slo=\"latency\"}",
+          "expr": "slo:error_ratio:rate1h{slo=\"latency\"} / 0.05",
           "legendFormat": "",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "x",
-          "decimals": 2,
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -364,7 +227,8 @@
                 "value": 14.4
               }
             ]
-          }
+          },
+          "unit": "x"
         },
         "overrides": []
       },
@@ -377,13 +241,12 @@
           "values": false
         },
         "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto"
+        "graphMode": "area"
       }
     },
     {
-      "id": 7,
-      "title": "Burn rate by window (availability)",
+      "id": 5,
+      "title": "Availability burn rate",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -401,7 +264,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "slo:sli_error:ratio_rate5m{slo=\"availability\"} / slo:error_budget:ratio{slo=\"availability\"}",
+          "expr": "slo:error_ratio:rate5m{slo=\"availability\"} / 0.005",
           "legendFormat": "5m",
           "refId": "A"
         },
@@ -410,23 +273,13 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "slo:sli_error:ratio_rate1h{slo=\"availability\"} / slo:error_budget:ratio{slo=\"availability\"}",
+          "expr": "slo:error_ratio:rate1h{slo=\"availability\"} / 0.005",
           "legendFormat": "1h",
           "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "slo:sli_error:ratio_rate6h{slo=\"availability\"} / slo:error_budget:ratio{slo=\"availability\"}",
-          "legendFormat": "6h",
-          "refId": "C"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "x",
           "custom": {
             "thresholdsStyle": {
               "mode": "line"
@@ -444,15 +297,16 @@
                 "value": 14.4
               }
             ]
-          }
+          },
+          "unit": "x"
         },
         "overrides": []
       },
       "options": {}
     },
     {
-      "id": 8,
-      "title": "Burn rate by window (latency)",
+      "id": 6,
+      "title": "Latency burn rate",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -470,7 +324,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "slo:sli_error:ratio_rate5m{slo=\"latency\"} / slo:error_budget:ratio{slo=\"latency\"}",
+          "expr": "slo:error_ratio:rate5m{slo=\"latency\"} / 0.05",
           "legendFormat": "5m",
           "refId": "A"
         },
@@ -479,23 +333,13 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "slo:sli_error:ratio_rate1h{slo=\"latency\"} / slo:error_budget:ratio{slo=\"latency\"}",
+          "expr": "slo:error_ratio:rate1h{slo=\"latency\"} / 0.05",
           "legendFormat": "1h",
           "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "slo:sli_error:ratio_rate6h{slo=\"latency\"} / slo:error_budget:ratio{slo=\"latency\"}",
-          "legendFormat": "6h",
-          "refId": "C"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "x",
           "custom": {
             "thresholdsStyle": {
               "mode": "line"
@@ -513,15 +357,16 @@
                 "value": 14.4
               }
             ]
-          }
+          },
+          "unit": "x"
         },
         "overrides": []
       },
       "options": {}
     },
     {
-      "id": 9,
-      "title": "Request rate by status",
+      "id": 7,
+      "title": "Requests per second by status",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -539,7 +384,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (status) (rate(http_requests_total{service=\"member-eligibility\",route=~\"/api/.*\"}[1m]))",
+          "expr": "sum by (status) (rate(http_requests_total{service=\"member-eligibility\"}[1m]))",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -553,8 +398,8 @@
       "options": {}
     },
     {
-      "id": 10,
-      "title": "Latency percentiles",
+      "id": 8,
+      "title": "Latency",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -572,7 +417,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"member-eligibility\",route=~\"/api/.*\"}[1m])))",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"member-eligibility\"}[1m])))",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -581,7 +426,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"member-eligibility\",route=~\"/api/.*\"}[1m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"member-eligibility\"}[1m])))",
           "legendFormat": "p95",
           "refId": "B"
         },
@@ -590,14 +435,13 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"member-eligibility\",route=~\"/api/.*\"}[1m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"member-eligibility\"}[1m])))",
           "legendFormat": "p99",
           "refId": "C"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
           "custom": {
             "thresholdsStyle": {
               "mode": "line"
@@ -615,15 +459,16 @@
                 "value": 0.3
               }
             ]
-          }
+          },
+          "unit": "s"
         },
         "overrides": []
       },
       "options": {}
     },
     {
-      "id": 11,
-      "title": "Error ratio by route (5xx)",
+      "id": 9,
+      "title": "Injected error rate (chaos)",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -641,8 +486,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (route) (rate(http_requests_total{service=\"member-eligibility\",route=~\"/api/.*\",status=~\"5..\"}[1m])) / sum by (route) (rate(http_requests_total{service=\"member-eligibility\",route=~\"/api/.*\"}[1m]))",
-          "legendFormat": "{{route}}",
+          "expr": "max(chaos_error_rate{service=\"member-eligibility\"}) or vector(0)",
+          "legendFormat": "error rate",
           "refId": "A"
         }
       ],
@@ -653,100 +498,6 @@
         "overrides": []
       },
       "options": {}
-    },
-    {
-      "id": 12,
-      "title": "Fault injection (game day)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 21,
-        "w": 12,
-        "h": 6
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "max(chaos_error_rate{service=\"member-eligibility\"})",
-          "legendFormat": "error rate",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "max(chaos_latency_seconds{service=\"member-eligibility\"})",
-          "legendFormat": "added latency (s)",
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {}
-    },
-    {
-      "id": 13,
-      "title": "Firing alerts",
-      "type": "table",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 21,
-        "w": 12,
-        "h": 6
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "ALERTS{alertstate=\"firing\"}",
-          "format": "table",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {},
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "alertstate": true,
-              "Value": true,
-              "job": true,
-              "instance": true
-            },
-            "indexByName": {
-              "alertname": 0,
-              "severity": 1,
-              "slo": 2,
-              "service": 3
-            }
-          }
-        }
-      ]
     }
-  ],
-  "editable": true
+  ]
 }
