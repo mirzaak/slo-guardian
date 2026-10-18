@@ -35,6 +35,36 @@ tests:
         alertname: AvailabilityBudgetBurn
         exp_alerts: []
 
+  - name: 80% slow requests for an hour should page
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{service="member-eligibility",route="/api/v1/plans",le="0.3"}'
+        values: '0+20x120'
+      - series: 'http_request_duration_seconds_count{service="member-eligibility",route="/api/v1/plans"}'
+        values: '0+100x120'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: LatencyBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              slo: latency
+            exp_annotations:
+              summary: latency error budget is burning too fast (95% SLO)
+              runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
+
+  - name: 2% slow requests should not page
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{service="member-eligibility",route="/api/v1/plans",le="0.3"}'
+        values: '0+98x120'
+      - series: 'http_request_duration_seconds_count{service="member-eligibility",route="/api/v1/plans"}'
+        values: '0+100x120'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: LatencyBudgetBurn
+        exp_alerts: []
+
   - name: service down
     interval: 1m
     input_series:
