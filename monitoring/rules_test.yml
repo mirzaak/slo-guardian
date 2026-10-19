@@ -81,3 +81,33 @@ tests:
             exp_annotations:
               summary: Prometheus can't scrape the service
               runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
+
+  - name: 4% errors for 6h should page via the slow-burn window
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",status="200"}'
+        values: '0+96x420'
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",status="503"}'
+        values: '0+4x420'
+    alert_rule_test:
+      - eval_time: 370m
+        alertname: AvailabilityBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              slo: availability
+            exp_annotations:
+              summary: availability error budget is burning too fast (99.5% SLO)
+              runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
+
+  - name: 2% errors for 6h should not page
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",status="200"}'
+        values: '0+98x420'
+      - series: 'http_requests_total{service="member-eligibility",route="/api/v1/plans",status="503"}'
+        values: '0+2x420'
+    alert_rule_test:
+      - eval_time: 370m
+        alertname: AvailabilityBudgetBurn
+        exp_alerts: []
