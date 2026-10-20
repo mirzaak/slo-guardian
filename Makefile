@@ -7,6 +7,9 @@ down:
 test:
 	python -m pytest
 
+test-rules:
+	docker run --rm -v "$(CURDIR)/monitoring:/m" --entrypoint promtool prom/prometheus:v2.55.1 test rules /m/rules_test.yml
+
 report:
 	python slo_report.py --window 1h
 
