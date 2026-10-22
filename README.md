@@ -28,7 +28,8 @@ All data is made up.
 - **Error budget report** (`slo_report.py`) - shows how much budget is left. Exits with code 1 when the
   budget is used up, so it can block a deploy in a pipeline.
 - **Chaos testing** - `PUT /chaos` makes the API fail or slow down on purpose (only when `CHAOS_ENABLED=true`).
-- **Kubernetes** (`k8s/`) - deployment with probes, resource limits and zero-downtime rolling updates.
+- **Kubernetes** (`k8s/`) - deployment with probes, resource limits and zero-downtime rolling updates,
+  plus a PodDisruptionBudget so node drains never take down more than one pod at a time.
 - **CI** - GitHub Actions runs the tests, the alert rule tests, validates the k8s manifests and builds the image.
 - **Runbook** (`docs/runbook.md`) - what to do when each alert fires.
 
@@ -94,4 +95,4 @@ section in `monitoring/prometheus.yml` and add a license key.
 - Alertmanager to route alerts to Slack / PagerDuty
 - Slower "ticket" alerts for budget that burns slowly over days
 - Helm chart or ArgoCD for deployments
-- HPA and PodDisruptionBudget
+- HPA
