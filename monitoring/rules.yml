@@ -2,6 +2,7 @@
 # Alerts use the multi-window burn rate approach from the Google SRE Workbook:
 # page when the error budget burns 14.4x too fast over 1h (and still in the last 5m),
 # or 6x too fast over 6h (and still in the last 30m).
+# A slower burn (3x over 1d, still in the last 2h) opens a ticket instead of paging.
 groups:
   - name: slo-recording
     rules:
@@ -21,6 +22,14 @@ groups:
         labels:
           slo: availability
         expr: (sum(rate(http_requests_total{service="member-eligibility",status=~"5.."}[6h])) or vector(0)) / sum(rate(http_requests_total{service="member-eligibility"}[6h]))
+      - record: slo:error_ratio:rate2h
+        labels:
+          slo: availability
+        expr: (sum(rate(http_requests_total{service="member-eligibility",status=~"5.."}[2h])) or vector(0)) / sum(rate(http_requests_total{service="member-eligibility"}[2h]))
+      - record: slo:error_ratio:rate1d
+        labels:
+          slo: availability
+        expr: (sum(rate(http_requests_total{service="member-eligibility",status=~"5.."}[1d])) or vector(0)) / sum(rate(http_requests_total{service="member-eligibility"}[1d]))
       - record: slo:error_ratio:rate5m
         labels:
           slo: latency
@@ -50,6 +59,15 @@ groups:
           severity: page
         annotations:
           summary: availability error budget is burning too fast (99.5% SLO)
+          runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
+      - alert: AvailabilityBudgetSlowBurn
+        expr: |
+          slo:error_ratio:rate1d{slo="availability"} > 3 * 0.005 and slo:error_ratio:rate2h{slo="availability"} > 3 * 0.005
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: availability error budget is burning slowly but steadily (99.5% SLO)
           runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
       - alert: LatencyBudgetBurn
         expr: |

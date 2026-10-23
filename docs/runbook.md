@@ -17,6 +17,15 @@ Too many requests are failing with 5xx errors.
    ```
 4. Check that chaos testing wasn't left on (the "Injected error rate" panel).
 
+## AvailabilityBudgetSlowBurn
+
+Severity `ticket`, not a page. Errors are low but steady: at this rate the 30-day budget is gone in
+about 10 days. Handle it during working hours.
+
+1. Run `python slo_report.py --window 1d` to see the burn rate over the last day.
+2. Look for a route or dependency that fails a little all the time (same checks as AvailabilityBudgetBurn).
+3. If it keeps burning, stop feature deploys until it's fixed.
+
 ## LatencyBudgetBurn
 
 Too many requests are slower than 300ms.
