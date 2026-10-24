@@ -1,0 +1,23 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: member-eligibility
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: member-eligibility
+  # Keep at least 3 pods so the PodDisruptionBudget (minAvailable: 2) still allows a drain.
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleDown:
+      # Wait 5 minutes before removing pods so short dips in traffic don't cause flapping.
+      stabilizationWindowSeconds: 300

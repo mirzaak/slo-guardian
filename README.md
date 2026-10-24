@@ -30,7 +30,8 @@ All data is made up.
   budget is used up, so it can block a deploy in a pipeline.
 - **Chaos testing** - `PUT /chaos` makes the API fail or slow down on purpose (only when `CHAOS_ENABLED=true`).
 - **Kubernetes** (`k8s/`) - deployment with probes, resource limits and zero-downtime rolling updates,
-  plus a PodDisruptionBudget so node drains never take down more than one pod at a time.
+  a PodDisruptionBudget so node drains never take down more than one pod at a time, and an HPA that
+  scales from 3 to 10 pods on CPU.
 - **CI** - GitHub Actions runs the tests, the alert rule tests, validates the k8s manifests and builds the image.
 - **Runbook** (`docs/runbook.md`) - what to do when each alert fires.
 
@@ -77,6 +78,7 @@ kubectl apply -f k8s/
 ```
 
 On EKS you would push the image to ECR and change the image name in `k8s/deployment.yaml`.
+The HPA needs metrics-server in the cluster (`kubectl top pods` should work).
 
 ## Tests
 
@@ -95,4 +97,3 @@ section in `monitoring/prometheus.yml` and add a license key.
 
 - Alertmanager to route alerts to Slack / PagerDuty
 - Helm chart or ArgoCD for deployments
-- HPA

@@ -31,8 +31,9 @@ about 10 days. Handle it during working hours.
 Too many requests are slower than 300ms.
 
 1. Check the latency panel. Is it one route or everything?
-2. Are pods out of CPU? `kubectl top pods`. If yes, scale up:
-   `kubectl scale deployment/member-eligibility --replicas=5`
+2. Are pods out of CPU? `kubectl top pods`. The HPA should add pods on its own - check it with
+   `kubectl get hpa member-eligibility`. If it's already at max replicas, raise `maxReplicas`
+   in `k8s/hpa.yaml` (`kubectl scale` won't help, the HPA overrides it).
 3. Check if latency was injected with chaos testing.
 
 ## ServiceDown

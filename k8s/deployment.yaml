@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: member-eligibility
 spec:
-  replicas: 3
+  # No replicas field: the HPA in hpa.yaml owns the pod count.
   strategy:
     rollingUpdate:
       maxUnavailable: 0
