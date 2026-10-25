@@ -24,7 +24,8 @@ All data is made up.
 - **Alerts** (`monitoring/rules.yml`) - multi-window burn rate alerts from the Google SRE Workbook.
   It pages if the budget burns 14.4x too fast over 1 hour (and is still happening in the last 5 minutes),
   or 6x too fast over 6 hours (and still in the last 30 minutes).
-  A slower burn (3x over 1 day, still happening in the last 2 hours) opens a ticket instead of paging.
+  A slower burn (3x over 1 day, still happening in the last 2 hours) opens a ticket instead of paging,
+  for both availability and latency.
   The alerts have unit tests in `monitoring/rules_test.yml`.
 - **Error budget report** (`slo_report.py`) - shows how much budget is left. Exits with code 1 when the
   budget is used up, so it can block a deploy in a pipeline.

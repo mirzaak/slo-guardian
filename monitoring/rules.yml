@@ -46,6 +46,14 @@ groups:
         labels:
           slo: latency
         expr: 1 - sum(rate(http_request_duration_seconds_bucket{service="member-eligibility",le="0.3"}[6h])) / sum(rate(http_request_duration_seconds_count{service="member-eligibility"}[6h]))
+      - record: slo:error_ratio:rate2h
+        labels:
+          slo: latency
+        expr: 1 - sum(rate(http_request_duration_seconds_bucket{service="member-eligibility",le="0.3"}[2h])) / sum(rate(http_request_duration_seconds_count{service="member-eligibility"}[2h]))
+      - record: slo:error_ratio:rate1d
+        labels:
+          slo: latency
+        expr: 1 - sum(rate(http_request_duration_seconds_bucket{service="member-eligibility",le="0.3"}[1d])) / sum(rate(http_request_duration_seconds_count{service="member-eligibility"}[1d]))
 
   - name: slo-alerts
     rules:
@@ -79,6 +87,15 @@ groups:
           severity: page
         annotations:
           summary: latency error budget is burning too fast (95% SLO)
+          runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
+      - alert: LatencyBudgetSlowBurn
+        expr: |
+          slo:error_ratio:rate1d{slo="latency"} > 3 * 0.05 and slo:error_ratio:rate2h{slo="latency"} > 3 * 0.05
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: latency error budget is burning slowly but steadily (95% SLO)
           runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
       - alert: ServiceDown
         expr: up{job="member-eligibility"} == 0

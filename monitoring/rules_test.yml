@@ -144,3 +144,36 @@ tests:
       - eval_time: 1560m
         alertname: AvailabilityBudgetSlowBurn
         exp_alerts: []
+
+  - name: 20% slow requests for a day should open a ticket
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{service="member-eligibility",route="/api/v1/plans",le="0.3"}'
+        values: '0+80x1600'
+      - series: 'http_request_duration_seconds_count{service="member-eligibility",route="/api/v1/plans"}'
+        values: '0+100x1600'
+    alert_rule_test:
+      - eval_time: 1560m
+        alertname: LatencyBudgetSlowBurn
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              slo: latency
+            exp_annotations:
+              summary: latency error budget is burning slowly but steadily (95% SLO)
+              runbook: https://github.com/mirzaak/slo-guardian/blob/main/docs/runbook.md
+      - eval_time: 1560m
+        alertname: LatencyBudgetBurn
+        exp_alerts: []
+
+  - name: 10% slow requests for a day should not open a ticket
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{service="member-eligibility",route="/api/v1/plans",le="0.3"}'
+        values: '0+90x1600'
+      - series: 'http_request_duration_seconds_count{service="member-eligibility",route="/api/v1/plans"}'
+        values: '0+100x1600'
+    alert_rule_test:
+      - eval_time: 1560m
+        alertname: LatencyBudgetSlowBurn
+        exp_alerts: []

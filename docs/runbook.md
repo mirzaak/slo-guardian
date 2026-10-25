@@ -36,6 +36,15 @@ Too many requests are slower than 300ms.
    in `k8s/hpa.yaml` (`kubectl scale` won't help, the HPA overrides it).
 3. Check if latency was injected with chaos testing.
 
+## LatencyBudgetSlowBurn
+
+Severity `ticket`, not a page. A steady share of requests is slower than 300ms: at this rate the
+30-day budget is gone in about 10 days. Handle it during working hours.
+
+1. Check the latency panel for a route that got slower over the last day or two.
+2. Compare with recent deploys (`kubectl rollout history deployment/member-eligibility`).
+3. Check `kubectl get hpa member-eligibility` - if it sits at max replicas, the service needs more capacity.
+
 ## ServiceDown
 
 Prometheus can't scrape the app. Either the app is down or monitoring is broken.
